@@ -10,6 +10,7 @@ import sys
 import time
 from sklearn.metrics import accuracy_score, roc_auc_score
 from sklearn.preprocessing import label_binarize
+import torch.nn.functional as F
 
 sys.path.append('.')
 from dataset import get_dataloader, get_transform
@@ -19,6 +20,7 @@ from models import (
     MedclipZeroShot,
     BioMedClipZeroShot,
     UniMedClipZeroShot,
+    RobustMedClip,
     BACKBONES
 )
 
@@ -39,7 +41,11 @@ MODELS = {
     'unimedclip': {
         'class': UniMedClipZeroShot,
         'backbones': list(BACKBONES['unimedclip'].keys()),
-    }
+    },
+    'rmedclip': {
+        'class': RobustMedClip,
+        'backbones': list(BACKBONES['rmedclip'].keys()),
+    },
 }
 
 DATASETS = {
@@ -78,6 +84,8 @@ def parse_args():
                         help="Model to evaluate")
     parser.add_argument("--backbone", type=str, required=True, 
                         help="Backbone to evaluate")
+    parser.add_argument("--pretrained_path", type=str, required=True,
+                        help="Path to pretrained model weights")
     parser.add_argument("--gpu", type=int, default=0, 
                         help="GPU ID to use")
     parser.add_argument("--corruptions", type=str, default="clean", 
@@ -97,8 +105,11 @@ def load_model(args, device="cuda"):
     model_class = MODELS[args.model]['class']
     model = model_class(
         vision_cls=args.backbone,
-        device=device
+        device=device,
+        lora_rank=args.lora_rank,
+        load_pretrained=False,
     )
+    model.load(args.pretrained_path)
     model.to(device)
     return model
 
@@ -155,12 +166,11 @@ def evaluate(args, model, datasets_to_evaluate):
             
             for severity in severity_levels:
                 try:
-                    root_path = DATASETS["medmnist"][0] if dataset_name in DATASETS["medmnist"][1] else DATASETS["medimeta"][0]
                     dataloader = get_dataloader(
-                        root_path,
-                        dataset_name, 
-                        corruption, 
-                        severity,
+                        datasets=dataset_name,
+                        col=None, 
+                        corruption=corruption, 
+                        severity=severity,
                         transform=None,  # No transforms needed as models handle this
                         batch_size=2048,
                     )
@@ -172,13 +182,19 @@ def evaluate(args, model, datasets_to_evaluate):
                 for images, labels in tqdm(dataloader, desc=f"Evaluating {dataset_name} - {corruption} - Severity {severity}"):
                     preds = model.batch_predict(images, text_features)
                     all_labels.extend(labels.numpy().reshape(-1))
-                    all_preds.extend(preds.numpy())
+                    all_preds.extend(preds.cpu().numpy())
                 
+                all_preds = np.array(all_preds)
+                all_labels = np.array(all_labels)
+                
+                # Calculate accuracy using argmax predictions
                 accuracy = accuracy_score(all_labels, np.argmax(all_preds, axis=1))
+
+                # For ROC AUC score calculation
                 if len(class_names) > 2:
-                    roc_auc = roc_auc_score(all_labels, np.array(all_preds), multi_class="ovr")
+                    roc_auc = roc_auc_score(all_labels, all_preds, multi_class="ovr")
                 else:
-                    roc_auc = roc_auc_score(all_labels, np.array(all_preds)[:, 1])
+                    roc_auc = roc_auc_score(all_labels, all_preds[:, 1])
                 
                 dataset_results[dataset_name][corruption][severity] = {
                     "accuracy": float(accuracy), 
@@ -252,7 +268,7 @@ def main():
         sys.exit(1)
     
     print(f"Evaluating datasets: {', '.join(datasets_to_evaluate)}")
-    
+    args.lora_rank = 8
     model = load_model(args, device)
     evaluate(args, model, datasets_to_evaluate)
 
