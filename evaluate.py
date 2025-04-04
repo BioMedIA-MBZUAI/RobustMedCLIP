@@ -13,40 +13,18 @@ from sklearn.preprocessing import label_binarize
 import torch.nn.functional as F
 
 sys.path.append('.')
-from dataset import get_dataloader, get_transform
+from dataset import get_dataloader, DATA_COLLECTIONS
 from cls_to_names import *
+from utils import _MODELS
 from models import (
     ClipZeroShot,
     MedclipZeroShot,
     BioMedClipZeroShot,
     UniMedClipZeroShot,
     RobustMedClip,
-    BACKBONES
 )
 
 # Define available models
-MODELS = {
-    'clip':{
-        'class': ClipZeroShot,
-        'backbones': list(BACKBONES['clip'].keys()),
-    },
-    'medclip': {
-        'class': MedclipZeroShot,
-        'backbones': list(BACKBONES['medclip'].keys()),
-    },
-    'biomedclip': {
-        'class': BioMedClipZeroShot,
-        'backbones': list(BACKBONES['biomedclip'].keys()),
-    },
-    'unimedclip': {
-        'class': UniMedClipZeroShot,
-        'backbones': list(BACKBONES['unimedclip'].keys()),
-    },
-    'rmedclip': {
-        'class': RobustMedClip,
-        'backbones': list(BACKBONES['rmedclip'].keys()),
-    },
-}
 
 DATASETS = {
     "medmnist": ('../MedMNIST-C', ["bloodmnist", "retinamnist", "breastmnist", "octmnist", "pneumoniamnist"]),
@@ -102,14 +80,16 @@ def load_model(args, device="cuda"):
     Load a model once to be used for multiple dataset evaluations
     """
     # Initialize the model
-    model_class = MODELS[args.model]['class']
+    model_class = eval(_MODELS[args.model]['class_name'])
     model = model_class(
         vision_cls=args.backbone,
         device=device,
         lora_rank=args.lora_rank,
         load_pretrained=False,
     )
-    model.load(args.pretrained_path)
+    if args.pretrained_path:
+        print(f"Loading model from {args.pretrained_path}")
+        model.load(args.pretrained_path)
     model.to(device)
     return model
 
@@ -226,49 +206,46 @@ def main():
     
     # Set environment variable for GPU
     os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu)
-    # Set device
+
     device = "cpu" if not torch.cuda.is_available() else f"cuda:{args.gpu}"
     print(f"Using GPU: {args.gpu}")
     
     # Validate model and backbone
-    if args.model not in MODELS:
+    if args.model not in _MODELS:
         print(f"Error: Unknown model {args.model}")
         sys.exit(1)
         
-    if args.backbone not in MODELS[args.model]['backbones']:
+    if args.backbone not in _MODELS[args.model]['backbones']:
         print(f"Error: Unknown backbone {args.backbone} for model {args.model}")
         sys.exit(1)
     
-    # Determine which datasets to evaluate
     datasets_to_evaluate = []
     
-    # First check for specific datasets
     if args.datasets:
         dataset_list = [d.strip() for d in args.datasets.split(',')]
         for dataset in dataset_list:
             found = False
-            for collection in DATASETS.values():
-                if dataset in collection[1]:
+            for collection in DATA_COLLECTIONS.values():
+                if dataset in collection['datasets']:
                     found = True
                     datasets_to_evaluate.append(dataset)
                     break
             if not found:
                 print(f"Warning: Unknown dataset {dataset}, skipping...")
     
-    # If no datasets specified, use the collection
     else:
         if args.collection == "all":
-            for collection in DATASETS.values():
-                datasets_to_evaluate.extend(collection[1])
+            for collection in DATA_COLLECTIONS.values():
+                datasets_to_evaluate.extend(collection['datasets'])
         else:
-            datasets_to_evaluate = DATASETS[args.collection][1]
+            datasets_to_evaluate = DATA_COLLECTIONS[args.collection]['datasets']
     
     if not datasets_to_evaluate:
         print("Error: No valid datasets to evaluate!")
         sys.exit(1)
     
     print(f"Evaluating datasets: {', '.join(datasets_to_evaluate)}")
-    args.lora_rank = 8
+    args.lora_rank = 16
     model = load_model(args, device)
     evaluate(args, model, datasets_to_evaluate)
 

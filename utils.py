@@ -254,6 +254,18 @@ class LoRA_ViT_timm(nn.Module):
         for w_B in self.w_Bs:
             nn.init.zeros_(w_B.weight)
 
+    def print_trainable_parameters(self) -> None:
+        """
+        Prints the number of trainable parameters in the model.
+        """
+        trainable_params = 0
+        all_params = 0
+        for _, param in self.named_parameters():
+            all_params += param.numel()
+            if param.requires_grad:
+                trainable_params += param.numel()
+        print(f"LoRA ViT trainable params: {trainable_params:,} ({100 * trainable_params / all_params:.2f}% of {all_params:,})")
+
     def forward(self, x: Tensor) -> Tensor:
         return self.lora_vit(x)
     
@@ -271,6 +283,11 @@ class _LoRA_Conv2d(nn.Module):
         self.linear_b = linear_b
         self.dim = conv.in_channels
         self.out_channels = conv.out_channels
+        # Store conv parameters to properly handle dimension changes
+        self.stride = conv.stride
+        self.padding = conv.padding
+        self.dilation = conv.dilation
+        self.kernel_size = conv.kernel_size
 
     def forward(self, x):
         out = self.conv(x)
@@ -297,14 +314,14 @@ class LoRA_resnet(nn.Module):
 
         assert r > 0
         
-        # Default: apply LoRA to the bottleneck layers in each block
+        # Default: apply LoRA to all convolution layers in ResNet50
         if lora_layer_patterns is None:
-            # Targeting the 3x3 conv in bottleneck blocks which are more important for features
             self.lora_layer_patterns = [
-                "layer1.*.conv2",  # Target 3x3 convs in layer1
-                "layer2.*.conv2",  # Target 3x3 convs in layer2
-                "layer3.*.conv2",  # Target 3x3 convs in layer3
-                "layer4.*.conv2",  # Target 3x3 convs in layer4
+                "conv1",                      # First 7x7 conv layer
+                "layer1\\..*\\.conv[123]",    # All convs in layer1 bottleneck blocks (1x1, 3x3, 1x1)
+                "layer2\\..*\\.conv[123]",    # All convs in layer2 bottleneck blocks
+                "layer3\\..*\\.conv[123]",    # All convs in layer3 bottleneck blocks
+                "layer4\\..*\\.conv[123]",    # All convs in layer4 bottleneck blocks
             ]
         else:
             self.lora_layer_patterns = lora_layer_patterns
@@ -329,9 +346,8 @@ class LoRA_resnet(nn.Module):
         # Function to check if a name matches any pattern
         def matches_pattern(name, patterns):
             for pattern in patterns:
-                # Convert glob pattern to regex
-                regex_pattern = pattern.replace('.', r'\.').replace('*', r'[^.]*')
-                if re.match(regex_pattern, name):
+                # Convert pattern to regex (already in regex format unlike previous glob patterns)
+                if re.match(pattern, name):
                     return True
             return False
         
@@ -342,17 +358,16 @@ class LoRA_resnet(nn.Module):
                 
                 # Check if this is a Conv2d layer matching our patterns
                 if isinstance(child, nn.Conv2d) and matches_pattern(current_name, self.lora_layer_patterns):
-                    # Only apply LoRA to 3x3 convs (typical bottleneck layers)
-                    if child.kernel_size == (3, 3):
-                        in_dim = child.in_channels
-                        w_a = nn.Linear(in_dim, r, bias=False)
-                        w_b = nn.Linear(r, child.out_channels, bias=False)
-                        
-                        self.w_As.append(w_a)
-                        self.w_Bs.append(w_b)
-                        
-                        # Replace the conv with LoRA
-                        setattr(module, name, _LoRA_Conv2d(child, w_a, w_b))
+                    # Apply LoRA to all matching conv layers, not just 3x3
+                    in_dim = child.in_channels
+                    w_a = nn.Linear(in_dim, r, bias=False)
+                    w_b = nn.Linear(r, child.out_channels, bias=False)
+                    
+                    self.w_As.append(w_a)
+                    self.w_Bs.append(w_b)
+                    
+                    # Replace the conv with LoRA
+                    setattr(module, name, _LoRA_Conv2d(child, w_a, w_b))
                 else:
                     # Recursively process child modules
                     replace_layers(child, current_name)
@@ -365,6 +380,33 @@ class LoRA_resnet(nn.Module):
             nn.init.kaiming_uniform_(w_A.weight, a=math.sqrt(5))
         for w_B in self.w_Bs:
             nn.init.zeros_(w_B.weight)
+
+    def print_trainable_parameters(self) -> None:
+        """
+        Prints the number of trainable parameters in the model.
+        """
+        trainable_params = 0
+        all_params = 0
+        for _, param in self.named_parameters():
+            all_params += param.numel()
+            if param.requires_grad:
+                trainable_params += param.numel()
+        
+        # Count parameters in the original model too for the total
+        for _, param in self.lora_medclip.named_parameters():
+            if not param.requires_grad:  # These are frozen parameters
+                all_params += param.numel()
+        
+        print(f"LoRA ResNet trainable params: {trainable_params:,} ({100 * trainable_params / all_params:.2f}% of {all_params:,})")
+        print(f"Breakdown by component:")
+        
+        # Count parameters in each LoRA component
+        w_as_params = sum(p.numel() for p in self.w_As.parameters() if p.requires_grad)
+        w_bs_params = sum(p.numel() for p in self.w_Bs.parameters() if p.requires_grad)
+        
+        print(f"  - LoRA A matrices: {w_as_params:,} parameters")
+        print(f"  - LoRA B matrices: {w_bs_params:,} parameters")
+        print(f"  - Total LoRA parameters: {w_as_params + w_bs_params:,}")
 
     def save_fc_parameters(self, filename: str) -> None:
         r"""Only safetensors is supported now.

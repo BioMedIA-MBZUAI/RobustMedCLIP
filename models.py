@@ -18,32 +18,6 @@ from utils import LoRA_ViT_timm, LoRA_resnet, _MODELS
 # Set tokenizers parallelism to prevent the warning
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-BACKBONES = {
-
-    'clip': {
-        'vit': "ViT-B/16",
-        'resnet': "RN50"
-    },
-
-    'medclip': {
-         "resnet": "MedCLIPVisionModel",
-         "vit": "MedCLIPVisionModelViT"
-    },
-
-    'biomedclip':{
-        'vit': "hf-hub:microsoft/BiomedCLIP-PubMedBERT_256-vit_base_patch16_224",
-    },
-
-    'unimedclip':{
-        'vit-B-16': "ViT-B-16-quickgelu",
-        'vit-L-14': "ViT-L-14-336-quickgelu",
-    },
-    'rmedclip':{
-        'vit': "path/to/robustmedclip/model",
-        'resnet': "path/to/robustmedclip/model",
-    },
-}
-
 class BaseZeroShotModel(nn.Module):
     def __init__(self, vision_cls: str, device: str = "cuda"):
         super().__init__()
@@ -82,7 +56,7 @@ class BaseZeroShotModel(nn.Module):
 class ClipZeroShot(BaseZeroShotModel):
     def __init__(self, vision_cls: str, device: str = "cuda", **kwargs):
         super().__init__(vision_cls, device)
-        self.model , _ = clip.load(BACKBONES['clip'][vision_cls], device=device)
+        self.model , _ = clip.load(_MODELS['clip']['backbones'][vision_cls], device=device)
         self.preprocess = transforms.Compose([
                 transforms.Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711)),
             ])
@@ -151,7 +125,7 @@ class UniMedClipZeroShot(BaseZeroShotModel):
             text_features = self.model.encode_text(inputs)
         return text_features
 
-# taken from 
+# taken from https://github.com/LightersWang/BiomedCLIP-LoRA
 class BiomedCLIPViT_LoRA(nn.Module):
     MODEL_TAG = 'hf-hub:microsoft/BiomedCLIP-PubMedBERT_256-vit_base_patch16_224'
 
@@ -203,6 +177,7 @@ class MedCLIPResnet_LoRA(nn.Module):
         self.lora_resnet = LoRA_resnet(resnet, r=lora_rank)
         self.text_encoder = medclip.text_model
         self.tokenizer = AutoTokenizer.from_pretrained(_MODELS['medclip']['text_encoder_name']['resnet'])
+        self.lora_resnet.print_trainable_parameters()
 
     def forward(self, text, image):
         image_features = self.encode_image(image, normalize=True) 
@@ -323,9 +298,8 @@ class RobustMedClip(BaseZeroShotModel):
         return logits_per_image
     
 
-# example usage
 if __name__ == "__main__":
-    # Simple test case for RobustMedClip initialization
+    
     print("Testing RobustMedClip initialization...")
     
     # Set device
