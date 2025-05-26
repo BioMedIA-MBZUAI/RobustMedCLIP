@@ -64,6 +64,12 @@ MediMeta-C/
 
 You can download the dataset from: [MediMeta-C](https://huggingface.co/datasets/razaimam45/MediMeta-C/tree/main), and [MedMNIST-C](https://github.com/francescodisalvo05/medmnistc-api).
 
+
+```bash
+pip install hugginface_hub
+huggingface-cli download razaimam45/MediMeta-C --local-dir ./data --repo-type dataset --token <YOUR-HUGGINGFACE-TOKEN>
+````
+
 ---
 
 ## 📦 Installation
