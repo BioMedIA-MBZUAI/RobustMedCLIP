@@ -26,6 +26,18 @@
 
 ---
 
+## 📦 Installation
+
+```bash
+git clone https://github.com/BioMedIA-MBZUAI/RobustMedCLIP.git
+cd RobustMedCLIP
+conda create -n robustmedclip python=3.12.7
+conda activate robustmedclip
+pip install -r requirements.txt
+pip install hugginface_hub
+````
+---
+
 ## 🧬 Datasets
 
 This project proposes MediMeta-C as corruption benchmark; and evaluates MVLMs on MedMNIST-C and MediMeta-C benchmarks.
@@ -64,22 +76,8 @@ MediMeta-C/
 
 You can download the dataset from: [MediMeta-C](https://huggingface.co/datasets/razaimam45/MediMeta-C/tree/main), and [MedMNIST-C](https://github.com/francescodisalvo05/medmnistc-api).
 
-
 ```bash
-pip install hugginface_hub
 huggingface-cli download razaimam45/MediMeta-C --local-dir ./data/MediMeta-C --repo-type dataset --token <YOUR-HUGGINGFACE-TOKEN>
-````
-
----
-
-## 📦 Installation
-
-```bash
-git clone https://github.com/BioMedIA-MBZUAI/RobustMedCLIP.git
-cd RobustMedCLIP
-conda create -n robustmedclip python=3.12.7
-conda activate robustmedclip
-pip install -r requirements.txt
 ````
 
 ---
