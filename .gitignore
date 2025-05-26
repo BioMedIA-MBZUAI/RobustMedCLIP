@@ -78,6 +78,4 @@ data/
 # results
 outputs/
 
-# scripts
-*.sh
 
