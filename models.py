@@ -14,6 +14,9 @@ import clip
 from timm.models.vision_transformer import VisionTransformer as timm_ViT
 from utils import LoRA_ViT_timm, LoRA_resnet, _MODELS
 
+from huggingface_hub import hf_hub_download, HfApi, create_repo
+import tempfile
+from typing import Optional
 
 # Set tokenizers parallelism to prevent the warning
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -138,6 +141,7 @@ class BiomedCLIPViT_LoRA(nn.Module):
         vit = biomedclip.visual
         # assert isinstance(vit, timm_ViT)
         self.lora_vit = LoRA_ViT_timm(vit_model=vit, r=lora_rank)
+        self.lora_vit.print_trainable_parameters()
         self.text_encoder = biomedclip.text
     
 
@@ -221,6 +225,153 @@ class MedCLIPResnet_LoRA(nn.Module):
         return F.normalize(text_features, dim=-1) if normalize else text_features
 
 class RobustMedClip(BaseZeroShotModel):
+
+    @classmethod
+    def from_pretrained(
+        cls, 
+        repo_id: str,
+        vision_cls: Optional[str] = None,
+        device: str = "cuda",
+        token: Optional[str] = None,
+        cache_dir: Optional[str] = None,
+        **kwargs
+    ):
+        """
+        Load a RobustMedClip model from a Hugging Face repository.
+        
+        Args:
+            repo_id: The Hugging Face repository ID (e.g., "username/model-name")
+            vision_cls: Vision backbone class ('vit' or 'resnet'). If None, will be loaded from config
+            device: Device to load the model on
+            token: Hugging Face authentication token
+            cache_dir: Directory to cache downloaded files
+            **kwargs: Additional arguments to pass to the model constructor
+        
+        Returns:
+            RobustMedClip model loaded with pre-trained weights
+        """
+        # Download config file to determine vision_cls if not provided
+        if vision_cls is None:
+            try:
+                config_path = hf_hub_download(
+                    repo_id=repo_id,
+                    filename="config.json",
+                    token=token,
+                    cache_dir=cache_dir
+                )
+                import json
+                with open(config_path, 'r') as f:
+                    config = json.load(f)
+                    vision_cls = config.get('vision_cls', 'vit')
+                    lora_rank = config.get('lora_rank', kwargs.get('lora_rank', 4))
+                    kwargs['lora_rank'] = lora_rank
+            except:
+                # If config doesn't exist, default to vit
+                vision_cls = 'vit'
+        
+        # Initialize model
+        model = cls(
+            vision_cls=vision_cls,
+            device=device,
+            load_pretrained=False,  # Don't load default pretrained weights
+            **kwargs
+        )
+        
+        # Download model weights
+        model_path = hf_hub_download(
+            repo_id=repo_id,
+            filename=f"{vision_cls}/model.pth",
+            token=token,
+            cache_dir=cache_dir
+        )
+        
+        # Download LoRA weights
+        lora_path = hf_hub_download(
+            repo_id=repo_id,
+            filename=f"{vision_cls}/lora_weights.safetensors",
+            token=token,
+            cache_dir=cache_dir
+        )
+        
+        # Load the weights
+        model.model.load_state_dict(torch.load(model_path, map_location='cpu'))
+        
+        # Load LoRA parameters
+        if vision_cls == 'vit':
+            model.model.lora_vit.load_lora_parameters(lora_path)
+        elif vision_cls == 'resnet':
+            model.model.lora_resnet.load_lora_parameters(lora_path)
+        
+        model.model.to(device)
+        model.model.eval()
+        
+        return model
+    
+    def push_to_hub(
+        self,
+        repo_id: str,
+        token: Optional[str] = None,
+        private: bool = False,
+        create_pr: bool = False,
+        commit_message: str = "Upload RobustMedClip model",
+        **kwargs
+    ):
+        """
+        Push the model to Hugging Face Hub.
+        
+        Args:
+            repo_id: The repository ID (e.g., "username/model-name")
+            token: Hugging Face authentication token
+            private: Whether to create a private repository
+            create_pr: Whether to create a pull request
+            commit_message: Commit message for the upload
+        """
+        api = HfApi()
+        
+        # Create repository if it doesn't exist
+        try:
+            create_repo(repo_id, token=token, private=private, exist_ok=True)
+        except Exception as e:
+            print(f"Repository might already exist: {e}")
+        
+        # Create temporary directory
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # Save model files
+            self.save(temp_dir)
+            
+            # Create config file
+            config = {
+                "vision_cls": self.vision_cls,
+                "lora_rank": self.lora_rank if hasattr(self, 'lora_rank') else self.model.lora_rank,
+                "model_type": "RobustMedClip",
+                "device": str(self.device)
+            }
+            
+            import json
+            with open(os.path.join(temp_dir, "config.json"), "w") as f:
+                json.dump(config, f, indent=2)
+            
+            # Create model card
+            model_card = self._create_model_card()
+            with open(os.path.join(temp_dir, "README.md"), "w") as f:
+                f.write(model_card)
+            
+            # Upload all files
+            api.upload_folder(
+                folder_path=temp_dir,
+                repo_id=repo_id,
+                token=token,
+                create_pr=create_pr,
+                commit_message=commit_message
+            )
+            
+    def _create_model_card(self):
+        # read the model card from the template
+        model_card = "ReadMe.md"
+        with open(model_card, "r") as f:
+            model_card = f.read()
+        return model_card
+    
     def __init__(self, vision_cls: str = None, device: str = "cuda", **kwargs):
         super().__init__(vision_cls, device)
 
@@ -306,8 +457,10 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
     
-    # Initialize the model
-    model = RobustMedClip(device=device)
+    model = RobustMedClip(
+                vision_cls='vit',  # or 'resnet'
+                device=device,
+                lora_rank=16,)
+    
+    print("Model initialized successfully.")
 
-    test_prompts = ["a chest x-ray of pneumonia", "a chest x-ray of normal", "a chest x-ray of covid19"]
-    text_features = model.text_features(test_prompts)

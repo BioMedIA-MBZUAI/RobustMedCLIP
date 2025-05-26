@@ -169,6 +169,25 @@ class LoRA_ViT_timm(nn.Module):
         self.reset_parameters()
         self.lora_vit = vit_model
 
+    def print_trainable_parameters(self) -> None:
+        """
+        Prints the number of trainable parameters in the model.
+        """
+        trainable_params = 0
+        all_params = 0
+        for _, param in self.named_parameters():
+            all_params += param.numel()
+            if param.requires_grad:
+                trainable_params += param.numel()
+        print(f"LoRA ViT trainable params: {trainable_params:,} ({100 * trainable_params / all_params:.2f}% of {all_params:,})")
+        print(f"Breakdown by component:")
+        # Count parameters in each LoRA component
+        w_as_params = sum(p.numel() for p in self.w_As if p.requires_grad)
+        w_bs_params = sum(p.numel() for p in self.w_Bs if p.requires_grad)
+        print(f"  - LoRA A matrices: {w_as_params:,} parameters")
+        print(f"  - LoRA B matrices: {w_bs_params:,} parameters")
+        print(f"  - Total LoRA parameters: {w_as_params + w_bs_params:,}")
+
     def save_fc_parameters(self, filename: str) -> None:
         r"""Only safetensors is supported now.
 
