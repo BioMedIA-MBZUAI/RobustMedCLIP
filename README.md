@@ -26,6 +26,18 @@
 
 ---
 
+## 📦 Installation
+
+```bash
+git clone https://github.com/BioMedIA-MBZUAI/RobustMedCLIP.git
+cd RobustMedCLIP
+conda create -n robustmedclip python=3.12.7
+conda activate robustmedclip
+pip install -r requirements.txt
+pip install hugginface_hub
+````
+---
+
 ## 🧬 Datasets
 
 This project proposes MediMeta-C as corruption benchmark; and evaluates MVLMs on MedMNIST-C and MediMeta-C benchmarks.
@@ -64,22 +76,8 @@ MediMeta-C/
 
 You can download the dataset from: [MediMeta-C](https://huggingface.co/datasets/razaimam45/MediMeta-C/tree/main), and [MedMNIST-C](https://github.com/francescodisalvo05/medmnistc-api).
 
-
 ```bash
-pip install hugginface_hub
-huggingface-cli download razaimam45/MediMeta-C --local-dir ./data --repo-type dataset --token <YOUR-HUGGINGFACE-TOKEN>
-````
-
----
-
-## 📦 Installation
-
-```bash
-git clone https://github.com/BioMedIA-MBZUAI/RobustMedCLIP.git
-cd RobustMedCLIP
-conda create -n robustmedclip python=3.12.7
-conda activate robustmedclip
-pip install -r requirements.txt
+huggingface-cli download razaimam45/MediMeta-C --local-dir ./data/MediMeta-C --repo-type dataset --token <YOUR-HUGGINGFACE-TOKEN>
 ````
 
 ---
@@ -92,10 +90,10 @@ You can fine-tune RobustMedCLIP with either ViT or ResNet backbones:
 
 ```bash
 # Fine-tune with ViT backbone (e.g., BioMedCLIP)
-bash run_finetune_vit.sh
+bash scripts/run_finetune_vit.sh
 
 # Fine-tune with ResNet backbone (e.g., MedCLIP)
-bash run_finetune_resnet.sh
+bash scripts/run_finetune_resnet.sh
 ```
 
 ### 2. Evaluation
@@ -104,22 +102,12 @@ Evaluate a fine-tuned or pretrained MVLM (including RMedCLIP):
 
 ```bash
 # Evaluation for RobustMedCLIP (RMC)
-bash run_eval_rmed.sh
+bash scripts/run_eval_rmed.sh
 
-# Generic evaluation (other baselines)
-bash run_eval.sh
-```
-
-### 3. Custom Script Execution
-
-Alternatively, run individual modules:
-
-```bash
-# Few-shot tuning (custom)
-python finetune.py --model biomedclip --fewshot_ratio 0.1
-
-# Evaluation (custom)
-python evaluate.py --model_path outputs/rmc_biomedclip.pth --corruption benchmark
+# Custom evaluation on other models (rmedclip, biomedclip, unimedclip, medclip, clip) 
+python evaluate.py --model rmedclip \
+                   --backbone vit \
+                   --gpu 0 --corruptions all --collection medimeta 
 ```
 
 ---
@@ -137,22 +125,6 @@ RobustMedCLIP consistently outperforms prior MVLMs under corruptions across all 
 | **RMedCLIP** | **62.8**      | **81.0**    |
 
 Detailed benchmarks available in `Results and Discussions`.
-
----
-
-## 📂 Directory Structure
-
-```bash
-RobustMedCLIP/
-│
-├── data/                  # Datasets (clean + corrupted). Put downloaded data in this folder
-├── models/                # MVLM architectures and LoRA modules
-├── train_rmc.py           # Few-shot tuning script
-├── evaluate.py            # Evaluation on corruption benchmarks
-├── utils/                 # Helpers for preprocessing, metrics, etc.
-├── assets/                # Figures, visualizations
-└── README.md
-```
 
 ---
 
