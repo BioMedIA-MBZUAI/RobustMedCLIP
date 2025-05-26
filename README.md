@@ -4,7 +4,8 @@
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Paper](https://img.shields.io/badge/Paper-PDF-blue)](https://arxiv.org/abs/2505.15425)
-[![Dataset](https://img.shields.io/badge/Dataset-MediMeta--C-orange)](https://github.com/BioMedIA-MBZUAI/RobustMedCLIP)
+[![Dataset](https://img.shields.io/badge/Dataset-MediMeta--C-orange)](https://huggingface.co/datasets/razaimam45/MediMeta-C)
+[![Model](https://img.shields.io/badge/Model-MediMeta--C-yellow)](https://huggingface.co/razaimam45/RobustMedCLIP)
 [![Project](https://img.shields.io/badge/Project-RobustMedCLIP-red)](https://github.com/BioMedIA-MBZUAI/RobustMedCLIP)
 
 ---
