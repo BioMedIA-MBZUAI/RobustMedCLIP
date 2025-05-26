@@ -36,6 +36,33 @@ conda activate robustmedclip
 pip install -r requirements.txt
 pip install hugginface_hub
 ````
+
+You will also need `<YOUR-HUGGINGFACE-TOKEN>` with your personal Hugging Face access token, to directly download Datasets and Model Weights.\
+To create an access token, go to your Huggingface `Settings`, then click on the `Access Tokens` tab. Click on the New token button to create a new User Access Token.
+
+---
+
+## 🧠 Models
+
+All baseline and RobustMedCLIP model checkpoints are available for direct download via Hugging Face at [RobustMedCLIP](https://huggingface.co/razaimam45/RobustMedCLIP/tree/main):
+
+```bash
+huggingface-cli download razaimam45/RobustMedCLIP \
+  --local-dir ./outputs \
+  --repo-type model \
+  --token <YOUR-HUGGINGFACE-TOKEN>
+```
+
+📁 `Outputs` Folder Structure: The `outputs/` folder (should be in root folder) contains all trained model weights and evaluation results:
+
+```bash
+outputs/
+├── checkpoints/       # Baseline MVLMs (MedCLIP, UniMedCLIP)
+├── exp-rank-8/        # RobustMedCLIP (LoRA Rank = 8) for ViT and ResNet across few-shots (1/3/7/10)%
+├── exp-rank-16/       # RobustMedCLIP (LoRA Rank = 16) for ViT and ResNet across few-shots (1/3/7/10)%
+└── results/           # Evaluation logs across mCE/Accuracy metrics
+```
+
 ---
 
 ## 🧬 Datasets
@@ -74,7 +101,7 @@ MediMeta-C/
 └── README.md             # Dataset description
 ```
 
-You can download the dataset from: [MediMeta-C](https://huggingface.co/datasets/razaimam45/MediMeta-C/tree/main), and [MedMNIST-C](https://github.com/francescodisalvo05/medmnistc-api).
+You can download the dataset from: [MediMeta-C](https://huggingface.co/datasets/razaimam45/MediMeta-C/tree/main), and [MedMNIST-C](https://github.com/francescodisalvo05/medmnistc-api). The downloaded folder `data/MediMeta-C` should be in the root of the project folder.
 
 ```bash
 huggingface-cli download razaimam45/MediMeta-C --local-dir ./data/MediMeta-C --repo-type dataset --token <YOUR-HUGGINGFACE-TOKEN>
