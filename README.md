@@ -1,4 +1,4 @@
-# RobustMedCLIP: Benchmarking and Improving the Robustness of Medical Vision-Language Models
+# RobustMedCLIP: On the Robustness of Medical Vision-Language Models: Are they Truly Generalizable?
 
 > **Accepted at [Medical Image Understanding and Analysis (MIUA) 2025]**
 
@@ -21,7 +21,7 @@
   <img src="assets/pipeline.png" width="750" alt="Pipeline Overview">
 </p>
 <p align="center">
-  Figure: Overview of the RobustMedCLIP pipeline: A) Few-shot Sampling of Clean Samples from MediMeta and MedMNIST across 5 modalities; B) Fine-tuning LoRA adapters using Few-shot samples; C) Distribution Shifts of MediMeta-C compared to Clean samples; D) Evaluation Results across Top-1 Accuracy and Corruption Error for 4 baselines and RobustMedCLIP.
+  Overview of the RobustMedCLIP pipeline: A) Few-shot Sampling of Clean Samples from MediMeta and MedMNIST across 5 modalities; B) Fine-tuning LoRA adapters using Few-shot samples; C) Distribution Shifts of MediMeta-C compared to Clean samples; D) Evaluation Results across Top-1 Accuracy and Corruption Error for 4 baselines and RobustMedCLIP.
 </p>
 
 ---
@@ -65,8 +65,6 @@ bash run_finetune_vit.sh
 bash run_finetune_resnet.sh
 ```
 
----
-
 ### 2. Evaluation
 
 Evaluate a fine-tuned or pretrained MVLM (including RMedCLIP):
@@ -78,8 +76,6 @@ bash run_eval_rmed.sh
 # Generic evaluation (other baselines)
 bash run_eval.sh
 ```
-
----
 
 ### 3. Custom Script Execution
 
