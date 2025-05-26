@@ -11,7 +11,7 @@
 
 ## 🚀 Highlights
 
-- 🧠 **MVLM Benchmarking**: Evaluate 5 major MVLMs across **5 modalities**, **7 corruption types**, and **5 severity levels**
+- 🧠 **MVLM Benchmarking**: Evaluate 5 major and recent MVLMs across **5 modalities**, **7 corruption types**, and **5 severity levels**
 - 📉 **Corruption Evaluation**: Analyze degradation under Gaussian noise, motion blur, pixelation, etc.
 - 🔬 **MediMeta-C**: A new benchmark simulating real-world OOD shifts in high-res medical images
 - 🧪 **Few-shot Robustness**: **RobustMedCLIP** uses just 1-10% of clean data for adaptation
@@ -35,7 +35,34 @@ This project proposes MediMeta-C as corruption benchmark; and evaluates MVLMs on
 | **MediMeta-C** | Multi-modality   | 5 Modalities   | 7 corruptions × 5 levels | High-res |
 | **MedMNIST-C** | Public Benchmark | 5 Modalities   | 7 corruptions × 5 levels | Low-res  |
 
-Download links and API access: [MediMeta-C + MedMNIST-C](https://github.com/BioMedIA-MBZUAI/RobustMedCLIP)
+### 📂 Dataset Structure
+
+The MediMeta-C dataset is hosted on HuggingFace and organized as follows:
+
+```bash
+MediMeta-C/
+├── pbc/                  # Blood Cell modality
+│   ├── test/             # Test set
+│   │   ├── clean.npz     # Clean samples
+│   │   ├── brightness_severity_1.npz
+│   │   ├── brightness_severity_2.npz
+│   │   ├── ...           # Other severity levels
+│   │   └── brightness_severity_5.npz
+│   ├── val/              # Validation set
+│       ├── clean.npz
+│       ├── contrast_severity_1.npz
+│       ├── contrast_severity_2.npz
+│       ├── ...           # Other severity levels
+│       └── contrast_severity_5.npz
+├── fundus/               # Fundus modality
+│   ├── test/
+│   ├── val/
+│   └── ...               # Similar structure as above
+├── ...                   # Other modalities
+└── README.md             # Dataset description
+```
+
+You can download the dataset from: [MediMeta-C](https://huggingface.co/datasets/razaimam45/MediMeta-C/tree/main), and [MedMNIST-C](https://github.com/francescodisalvo05/medmnistc-api).
 
 ---
 
@@ -128,11 +155,14 @@ RobustMedCLIP/
 If you find this repository helpful, please cite our paper:
 
 ```bibtex
-@inproceedings{imam2025robustmedclip,
-  title     = {On the Robustness of Medical Vision-Language Models: Are they Truly Generalizable?},
-  author    = {Raza Imam and Rufael Marew and Mohammad Yaqub},
-  booktitle = {Medical Image Understanding and Analysis (MIUA)},
-  year      = {2025}
+@misc{imam2025robustnessmedicalvisionlanguagemodels,
+      title={On the Robustness of Medical Vision-Language Models: Are they Truly Generalizable?}, 
+      author={Raza Imam and Rufael Marew and Mohammad Yaqub},
+      year={2025},
+      eprint={2505.15425},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV},
+      url={https://arxiv.org/abs/2505.15425}, 
 }
 ```
 
