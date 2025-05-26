@@ -44,7 +44,7 @@ for i in "${!FEWSHOT_PERCENTAGES[@]}"; do
     echo "Running with ${LABEL} few-shot samples (${FEWSHOT})"
     
     # Build the command based on the few-shot percentage
-    CMD="python finetune.py \
+    CMD="python ../finetune.py \
         --datasets $DATASETS \
         --backbone $BACKBONE \
         --epochs $EPOCHS \

@@ -51,7 +51,7 @@ for m in "${MODEL_LIST[@]}"; do
     echo "Processing model: $m with backbone: $backbone using GPU $GPU_ID"
     
     # Build the command with the appropriate parameters
-    CMD="python evaluate.py --model $m --backbone $backbone --gpu $GPU_ID --corruptions $CORRUPTIONS --output_dir $OUTPUT_DIR $OVERWRITE"
+    CMD="python ../evaluate.py --model $m --backbone $backbone --gpu $GPU_ID --corruptions $CORRUPTIONS --output_dir $OUTPUT_DIR $OVERWRITE"
     
     # Add appropriate dataset parameters based on what was provided
     if [ -n "$DATASETS" ]; then
